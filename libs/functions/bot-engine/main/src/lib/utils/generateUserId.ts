@@ -9,5 +9,5 @@ import { PlatformType, __PlatformTypeToPrefix } from "@app/model/convs-mgr/conve
 */
 export function generateEndUserId(endUserPhoneNumber: string, platformType: PlatformType, n: number): string 
 {
-  return __PlatformTypeToPrefix(platformType) + '_' + n.toString() + '_' + endUserPhoneNumber;
+  return __PlatformTypeToPrefix(platformType) + '_' + n.toString() + '_' + endUserPhoneNumber.replace('+','');
 }
