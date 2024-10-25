@@ -51,7 +51,7 @@ export class PlayService implements IvrPlayService
    */
   getTwiml(): TwiML 
   {
-    this.tools.Logger.log( () => (`[PlayService] The generated twiml is: ${this.twiml.toString()}`));
+    console.log(`[PlayService] The generated twiml is: ${this.twiml.toString()}`);
     return this.twiml;
   }
 }
