@@ -204,7 +204,7 @@ export class ProcessMessageService
 
     const sideOperations = processOperationBlock.sideOperations;
 
-    if (sideOperations && sideOperations.length > 0) this.sideOperations.push(...sideOperations);
+    if (sideOperations.length && sideOperations.length > 0) this.sideOperations.push(...sideOperations);
 
     return updatedPosition;
   }
