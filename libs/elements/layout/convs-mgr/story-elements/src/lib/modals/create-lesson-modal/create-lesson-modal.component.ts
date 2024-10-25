@@ -91,7 +91,7 @@ export class CreateLessonModalComponent implements OnInit, OnDestroy {
       description: this.lessonForm.value.storyDesc,
       parentModule: this.lessonForm.value.parentModule.id,
       orgId: '',
-      type: this.lessonForm.value.isIvrModule ? StoryModuleTypes.IvrModule : undefined,
+      type: this.lessonForm.value.isIvrModule ? StoryModuleTypes.IvrModule : StoryModuleTypes.Story,
     };
 
     const parentModule = this.lessonForm.value.parentModule as BotModule;
