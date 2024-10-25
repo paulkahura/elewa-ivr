@@ -68,6 +68,7 @@ export class EngineBotManager
     this._logger.log(() => `Engine started!!!`);
 
     this._logger.log(() => `Processing message ${JSON.stringify(message)}.`);
+    let playAudio;
 
     try {
       // Set the Organisation Id
@@ -122,11 +123,12 @@ export class EngineBotManager
       // STEP 3: Process the message
       //         Because the status of the chat can change anytime, we use the current status
       //          to determine how we are going to process the message and reply to the end user
+
       switch (this.endUser.status) {
         case ChatStatus.Running:
           message.direction = MessageDirection.FROM_END_USER_TO_CHATBOT;
 
-          await bot.play(message, this.endUser, currentCursor);
+          playAudio = await bot.play(message, this.endUser, currentCursor);
 
           break;
         case ChatStatus.Paused:
@@ -149,16 +151,17 @@ export class EngineBotManager
         default:
           message.direction = MessageDirection.FROM_END_USER_TO_CHATBOT;
 
-          await bot.play(message, this.endUser, currentCursor);
+          playAudio = await bot.play(message, this.endUser, currentCursor);
+
 
           // Resolve all pending operations.
           await Promise.all([...this.sideOperations, bot.pendingOperations()]);
           
           break;
       }
-      return { success: true } as RestResult200;
+      return { success: true, data: playAudio } as RestResult200;
     } catch (error) {
-      this._tools.Logger.error(() => `[EngineChatManagerHandler].execute: Chat Manager encountered an error: ${error}`);
+      this._tools.Logger.error(() => `[EngineChatManagerHandler].execute: Chat Manager encountered an error: ${error} playing: ${playAudio}`);
     }
   }
 
