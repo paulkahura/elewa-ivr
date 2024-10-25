@@ -28,13 +28,14 @@ export class TextToSpeechService {
 
     try {
       const result = await this._synthesizeText(synthesizer, text);
+      console.log("The resulting one is ", result.reason);
       if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
         return result.audioData; // Resolve with the synthesized audio data
       } else {
         throw new Error(`Speech synthesis failed: ${sdk.ResultReason[result.reason]}`);
       }
     } finally {
-      synthesizer.close(); // Always close the synthesizer after completion
+      synthesizer.close(); // we have to always close the synthesizer after completion
     }
   }
 
