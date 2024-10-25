@@ -3,6 +3,7 @@ import { HandlerTools } from '@iote/cqrs';
 import { ContainerClient } from '@azure/storage-blob';
 import { AzureAudioUploadService } from './services/azure-blob-upload.service';
 import { AudioData } from './models/audio-data.interface';
+import 'dotenv/config';
 
 /**
  * Handler class for uploading audio to Azure Blob Storage.
@@ -21,8 +22,10 @@ export class UploadAudioHandler extends FunctionHandler<any, { success: boolean;
     super();
     
     // Initialize the ContainerClient and pass it to the AzureAudioUploadService
-    const azureStorageConnectionString = process.env['AZURE_STORAGE_CONNECTION_STRING']!;
-    const containerName = process.env['AZURE_STORAGE_MEDIA_URL']!;
+    // const azureStorageConnectionString = process.env['AZURE_BLOB_CONNECTION_STRING']!;
+    const azureStorageConnectionString = "DefaultEndpointsProtocol=https;AccountName=ivrmedia;AccountKey=VKl2MPvHhv/zvuiMOtvvzCS69vrTl5TRXbdePCl1F8rjGDv4aLKwB5hktWZBbjEwsG+gvFN7TIFP+AStBkOVzw==;EndpointSuffix=core.windows.net";
+    // const containerName = process.env['AZURE_BLOB_CONTAINER_NAME']!;
+    const containerName = "ivrmedia";
     
     this.containerClient = new ContainerClient(azureStorageConnectionString, containerName);
     this.audioUploadService = new AzureAudioUploadService(this.containerClient);
@@ -36,7 +39,7 @@ export class UploadAudioHandler extends FunctionHandler<any, { success: boolean;
    * @returns {Promise<{ success: boolean; status: number; message: string }>} - A structured response indicating the result of the upload operation.
    */
   public async execute(audioData: AudioData, context: FunctionContext, tools: HandlerTools): Promise<{ success: boolean; status: number; message: string }> {
-    tools.Logger.debug(() => `Beginning Execution, Uploading Audio`);
+    tools.Logger.debug(() => `Beginning Execution, Uploading Audio ${JSON.stringify(audioData)}`);
 
     return await this.uploadAudioToAzure(audioData, tools);
   }
@@ -47,7 +50,7 @@ export class UploadAudioHandler extends FunctionHandler<any, { success: boolean;
    * @param {HandlerTools} tools - Utility tools including logging and repositories for additional actions.
    * @returns {Promise<{ success: boolean; status: number; message: string }>} - A structured response indicating success or failure.
    */
-  private async uploadAudioToAzure(audioData: AudioData, tools: HandlerTools): Promise<{ success: boolean; status: number; message: string }> {
+  private async uploadAudioToAzure(audioData: AudioData, tools: HandlerTools): Promise<{ success: boolean; status: number; message: string, data?: string }> {
     const { audioBuffer, orgId, storyId, blockId, voiceGender } = audioData;
     
     try {
@@ -61,7 +64,8 @@ export class UploadAudioHandler extends FunctionHandler<any, { success: boolean;
       return {
         success: true,
         status: 200,
-        message: `Media uploaded successfully: ${audioUrl}`
+        message: `Media uploaded successfully: ${audioUrl}`,
+        data: audioUrl
       };
     } catch (error) {
       tools.Logger.error(() => `Failed to upload audio file: ${error}`);
