@@ -2,7 +2,7 @@ import { HandlerTools } from "@iote/cqrs";
 
 import { Cursor } from "@app/model/convs-mgr/conversations/admin/system";
 import { FileMessage, Message, MessageDirection, TextMessage } from "@app/model/convs-mgr/conversations/messages";
-import { isMediaBlock, isOutputBlock, StoryBlock } from "@app/model/convs-mgr/stories/blocks/main";
+import { isMediaBlock, isOutputBlock, IVRStoryBlock, StoryBlock } from "@app/model/convs-mgr/stories/blocks/main";
 import { EndUser } from "@app/model/convs-mgr/conversations/chats";
 import { isFileMessage, MessageTypes } from "@app/model/convs-mgr/functions";
 
@@ -20,6 +20,8 @@ import { IBotEnginePlay } from "./bot-engine.interface";
 import { ActiveChannel } from "../model/active-channel.service";
 
 import { __isCommand } from "../utils/isCommand";
+import TwiML from "twilio/lib/twiml/TwiML";
+import { twiml } from "twilio/lib";
 
 /**
  * When out chatbot receives a message from the end user, we need to figure out how to
@@ -63,7 +65,7 @@ export class BotEnginePlay implements IBotEnginePlay
    * This method is resposible for 'playing' the end user through the stories. @see {Story}.
    *  It receives the message and responds with the next block in the story.
    */
-  async play(message: Message, endUser: EndUser, currentCursor: Cursor | boolean)
+  async play(message: Message, endUser: EndUser, currentCursor: Cursor | boolean, accumulatedTwiml: TwiML = new twiml.VoiceResponse())
   {
     // Save the message (batches the message to be saved to firebase later)
     this._saveEndUserMessage(message, endUser.id);
@@ -85,7 +87,10 @@ export class BotEnginePlay implements IBotEnginePlay
     await new Promise(resolve => setTimeout(resolve, 300));
     // } 
 
-    await this.__reply(nextBlock, endUser, message);
+    const currentReply = await this.__reply(nextBlock, endUser, message) as IVRStoryBlock;
+    // Append the current TwiML to the accumulated TwiML
+    accumulatedTwiml.play(currentReply.audioUrl);
+    console.log("***********************", accumulatedTwiml.toString());
 
     this.__move(newCursor, endUser.id);
 
@@ -93,8 +98,9 @@ export class BotEnginePlay implements IBotEnginePlay
     //  If it is not an input block we replay until we get hit an input block. 
     if (isOutputBlock(nextBlock.type)) {
       this.blockSent = nextBlock;
-      return await this.play(null, endUser, newCursor);
+      return await this.play(null, endUser, newCursor, accumulatedTwiml);
     }
+    return accumulatedTwiml;
   }
 
    pendingOperations() {
@@ -108,7 +114,7 @@ export class BotEnginePlay implements IBotEnginePlay
   /**
    * Responsible for returning the next block in the story.
    */
-  private async __getNextBlock(endUser: EndUser, currentPosition: Cursor | boolean, message?: Message)
+ async __getNextBlock(endUser: EndUser, currentPosition: Cursor | boolean, message?: Message)
   {
 
     this._tools.Logger.log(() => `[BotEnginePlay].__getNextBlock: Getting the next block... ${JSON.stringify(currentPosition)}`);
@@ -125,7 +131,9 @@ export class BotEnginePlay implements IBotEnginePlay
       this._tools.Logger.log(() => `[BotEnginePlay].__getNextBlock: New conversation, getting the first block instead.`);
       // If the end user position does not exist then the conversation is new and we return the first block
       return this._processMessageService$.getFirstBlock(this._tools, this.orgId, this.defaultStory);
-    } else {
+    } 
+    else 
+    {
       this._tools.Logger.log(() => `[BotEnginePlay].__getNextBlock: Continuing conversation, getting the next block.`);
 
       const endUserPosition = currentPosition as Cursor;
@@ -152,6 +160,8 @@ export class BotEnginePlay implements IBotEnginePlay
 
     // Reply To the end user
     await this._sendBlockMessage(mailMergedBlock, endUser);
+
+    return nextBlock;
   }
 
   private async __mailMergeVariables(storyBlock: StoryBlock, variables: {[key:string]:any}) 
