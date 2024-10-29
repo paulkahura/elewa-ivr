@@ -162,6 +162,7 @@ export class EngineBotManager
       return { success: true, data: playAudio } as RestResult200;
     } catch (error) {
       this._tools.Logger.error(() => `[EngineChatManagerHandler].execute: Chat Manager encountered an error: ${error} playing: ${playAudio}`);
+      return { status: 500, data: playAudio, message: error} as RestResult;
     }
   }
 
