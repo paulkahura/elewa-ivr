@@ -22,8 +22,7 @@ export class UploadAudioHandler extends FunctionHandler<any, { success: boolean;
     super();
     
     // Initialize the ContainerClient and pass it to the AzureAudioUploadService
-    // const azureStorageConnectionString = process.env['AZURE_BLOB_CONNECTION_STRING']!;
-    const azureStorageConnectionString = "DefaultEndpointsProtocol=https;AccountName=ivrmedia;AccountKey=VKl2MPvHhv/zvuiMOtvvzCS69vrTl5TRXbdePCl1F8rjGDv4aLKwB5hktWZBbjEwsG+gvFN7TIFP+AStBkOVzw==;EndpointSuffix=core.windows.net";
+    const azureStorageConnectionString = process.env['AZURE_BLOB_CONNECTION_STRING']!;
     // const containerName = process.env['AZURE_BLOB_CONTAINER_NAME']!;
     const containerName = "ivrmedia";
     
