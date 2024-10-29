@@ -29,9 +29,8 @@ export class ConvertTextToSpeechHandler extends FunctionHandler<any, RestResult>
 
     // Create SpeechConfig using Azure Speech SDK
     const speechConfig = sdk.SpeechConfig.fromSubscription(
-      // process.env['AZURE_SPEECH_KEY']!,  // Azure Speech Service API Key from environment
+      process.env['AZURE_SPEECH_KEY']!,  // Azure Speech Service API Key from environment
       // process.env['AZURE_SPEECH_REGION']! // Azure region for the speech service
-      "7e5f8eb3b12d4e8c87e13f65e7acfc3f",  // Azure Speech Service API Key from environment
       "eastus" // Azure region for the speech service
     );
 
