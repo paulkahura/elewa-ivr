@@ -40,6 +40,6 @@ export class IvrService
    */
   gatherWithPlay(audioUrl: string, numDigits: number): TwiML 
   {
-    return this.gatherService.gatherWithPlay(audioUrl, numDigits);
+    return this.gatherService.gatherWithPlay(audioUrl);
   }
 }
