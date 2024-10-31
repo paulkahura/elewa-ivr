@@ -4,7 +4,7 @@ import { SubSink } from 'subsink';
 import { flatten as ___flatten, cloneDeep as ___cloneDeep } from 'lodash';
 
 import { combineLatest, Observable, of } from 'rxjs';
-import { catchError, switchMap, tap } from 'rxjs/operators';
+import { catchError, finalize, switchMap, tap } from 'rxjs/operators';
 
 import { Logger } from '@iote/bricks-angular';
 
@@ -110,12 +110,21 @@ export class StoryEditorStateService
     // Persist the story and all the blocks
     return combineLatest(actions$)
       .pipe(tap(() => this._setLastLoadedState(state)),
-            tap(() => state.story.type && state.story.type === StoryModuleTypes.IvrModule && this._ivrService.save(state)),
-            tap(() => this._isSaving = false),
+            switchMap(() => {
+              // For IVR stories, save to also the IVR service
+              if (state.story.type === StoryModuleTypes.IvrModule) {
+                return this._ivrService.save(state);
+              }
+              // No extra save will be needed for non-IVR stories
+              return of(null);
+            }),
+            finalize(() => {
+              // `_isSaving` is noww reset regardless of success or error
+              this._isSaving = false;
+            }),
             catchError(err => {
               this._logger.log(() => `Error saving story editor state, ${err}`);
               alert('Error saving story, please try again. If the problem persists, contact support.');
-              this._isSaving = false;
               return of(err);
             }),
             // Fix {CLM-73} - Multiple refresh bug on story saving.
