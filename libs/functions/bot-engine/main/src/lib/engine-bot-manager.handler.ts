@@ -25,6 +25,8 @@ import { ProcessMessageService } from './services/process-message/process-messag
 import { createTextMessage } from './utils/createTextMessage.util';
 import { BotMediaProcessService } from './services/media/process-media-service';
 import { HasChanged } from './utils/has-object-changed.util';
+import { twiml} from 'twilio/lib';
+import TwiML from 'twilio/lib/twiml/TwiML';
 
 
 /**
@@ -78,7 +80,7 @@ export class EngineBotManager
       const isDuplicatePayload = await this.duplicatePayload(this._tools, this.orgId, endUser.id, message);
       if(isDuplicatePayload) {
         this._tools.Logger.log(() => `Received duplicate payload. Exiting...`);
-        return { success: true } as RestResult200;
+        return { success: true ,data: this.createTwiMLError("Duplicate payload received. Exiting early.")} as RestResult200;
       }
 
       const lastActiveTime = new Date();
@@ -162,8 +164,18 @@ export class EngineBotManager
       return { success: true, data: playAudio } as RestResult200;
     } catch (error) {
       this._tools.Logger.error(() => `[EngineChatManagerHandler].execute: Chat Manager encountered an error: ${error} playing: ${playAudio}`);
-      return { status: 500, data: playAudio, message: error} as RestResult;
+      return { status: 500, data: this.createTwiMLError(error), message: error} as RestResult;
     }
+  }
+
+  /**
+   * Creates a TwiML response with an error message.
+   * @param errorMessage - The message to convey to the caller in case of an error.
+   */
+  private createTwiMLError(errorMessage: string): TwiML {
+    const twilio = new twiml.VoiceResponse();
+    twilio.say(errorMessage);
+    return twilio;
   }
 
   async createEndUser(endUser: EndUser, enrolledUserService: EnrolledUserDataService, platform: PlatformType, logger:Logger) {
