@@ -66,26 +66,26 @@ export class IvrService {
    */
   save(storyBlock: StoryEditorState): any {
     const blockObservables = storyBlock.blocks
-    .filter((block: IVRStoryBlock) => block.type !== StoryBlockTypes.EndStoryAnchorBlock) // Filter out EndBlock type
-    .map((block: IVRStoryBlock) =>
-   this._generateAudioForBlock(block, storyBlock.story.id!).pipe(
-   switchMap(audioBlob =>
-   this._scheduleAudioUpload(audioBlob, this.orgId, storyBlock.story.id!, block.id!, VoiceGender.Male)
-   ),
-   switchMap((audioUrl: any) => {
-   console.log("the audio url generated is ", audioUrl);
-   block.audioUrl = audioUrl;
-   console.log(block.audioUrl)
-   return this._blocksStore.update(block);
-    }),
-   tap(() => this._logger.log(() => `Block with audio saved: ${block}`))
-   )
-   );
-   return forkJoin(blockObservables).pipe(
-   tap(() => this._logger.log(() => 'All blocks for the story processed.')),
-   switchMap(() => of(storyBlock.blocks))
-   ).subscribe();
-    }
+      .filter((block: IVRStoryBlock) => block.type !== StoryBlockTypes.EndStoryAnchorBlock) // Filter out EndBlock type
+      .map((block: IVRStoryBlock) =>
+        this._generateAudioForBlock(block, storyBlock.story.id!).pipe(
+          switchMap(audioBlob =>
+            this._scheduleAudioUpload(audioBlob, this.orgId, storyBlock.story.id!, block.id!, VoiceGender.Male)
+          ),
+          switchMap((audioUrl: any) => {
+            console.log("the audio url generated is ", audioUrl);
+            block.audioUrl = audioUrl;
+            console.log(block.audioUrl)
+            return this._blocksStore.update(block);
+          }),
+          tap(() => this._logger.log(() => `Block with audio saved: ${block}`))
+        )
+      );
+    return forkJoin(blockObservables).pipe(
+      tap(() => this._logger.log(() => 'All blocks for the story processed.')),
+      switchMap(() => of(storyBlock.blocks))
+    ).subscribe();
+  }
 
   /**
    * Calls the cloud function 'azureTts' to convert text to speech.
@@ -107,14 +107,6 @@ export class IvrService {
           bytes[i] = binaryString.charCodeAt(i);
         }
         const audioBuffer = bytes.buffer;
-
-        // Save ArrayBuffer as a Blob (for audio file download)
-        const blob = new Blob([audioBuffer], { type: 'audio/wav' });
-        const url = window.URL.createObjectURL(blob);
-
-        // Trigger file download or play the audio
-        const audioElement = new Audio(url);
-        audioElement.play();
 
         return audioBuffer;  // Return the ArrayBuffer
       }),
@@ -193,12 +185,12 @@ export class IvrService {
     // Convert the ArrayBuffer to Base64
     this._logger.log(() => "Converting ArrayBuffer to Base64...");
     const audioBase64 = this._arrayBufferToBase64(audioBlob);
-  
+
     this._logger.log(() => `Base64 audio generated: ${audioBase64.slice(0, 100)}...`); // Log a portion for verification
-  
+
     // Log details about the upload
     this._logger.log(() => `Scheduling audio upload with orgId: ${orgId}, storyId: ${storyId}, blockId: ${blockId}, voice: ${voice}`);
-  
+
     // Call the cloud function and handle the observable correctly
     const uploadObservable = this._aff.httpsCallable('azureAudioUpload')({
       audioBuffer: audioBase64,  // Pass base64 encoded audio
@@ -207,7 +199,7 @@ export class IvrService {
       blockId,
       voice
     });
-  
+
     return new Promise<void>((resolve, reject) => {
       uploadObservable.subscribe({
         next: (result: any) => {
@@ -229,7 +221,7 @@ export class IvrService {
       });
     });
   }
-  
+
 
   /**
  * Converts an ArrayBuffer to a Base64 string.
