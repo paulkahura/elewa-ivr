@@ -3,7 +3,7 @@ import { Twilio, validateRequest } from "twilio/lib";
 
 import { HandlerTools } from '@iote/cqrs';
 import { FunctionContext, FunctionHandler, HttpsContext, RestResult } from '@ngfi/functions';
-import { ActiveChannel, BlockDataService, ChannelDataService, ConnectionsDataService, CursorDataService, EngineBotManager, generateEndUserId, MessagesDataService, StoriesDataService } from '@app/functions/bot-engine';
+import { ActiveChannel, BlockDataService, ChannelDataService, ConnectionsDataService, CursorDataService, EngineBotManager, generateEndUserId, IParseInMessage, MessagesDataService, StoriesDataService } from '@app/functions/bot-engine';
 
 
 import { TwilioIVRRequest } from './models/twilio-ivr-request.interface';
@@ -18,20 +18,28 @@ import { IVRStoryBlock } from "@app/model/convs-mgr/stories/blocks/main";
 import { BotEnginePlay } from "libs/functions/bot-engine/main/src/lib/services/bot-engine-play.service";
 import { ProcessMessageService } from "libs/functions/bot-engine/main/src/lib/services/process-message/process-message.service";
 import { BotMediaProcessService } from "libs/functions/bot-engine/main/src/lib/services/media/process-media-service";
+import { IvrMessageParser } from "./utils/ivr-message-parser";
+import { MessageType } from "microsoft-cognitiveservices-speech-sdk/distrib/lib/src/common/ConnectionMessage";
 
 
 export class TwilioIncomingCallHandler extends FunctionHandler<any, any> {
 
   public async execute(data: TwilioIVRRequest | null , context: HttpsContext, tools: HandlerTools): Promise<any> {
-    // Validate the incoming request is from Twilio
+    // Todo: Validate the incoming request is from Twilio
     tools.Logger.debug(() => `Twilio handler hit with dat ${JSON.stringify(context.eventContext.request.query)}`);
+    let payload;
     // if (!this.validateRequest(data, context)) {
     //   return {
     //     status: 400,
     //     message: 'Invalid Twilio signature'
     //   };
     // }
-    const payload = context.eventContext.request.query;
+
+    if(Object.keys(context.eventContext.request.query).length > 0) {
+      payload = context.eventContext.request.query;
+    } else {
+      payload = data;
+    }
     return await this.handleCall(data, payload, tools, context);
   }
 
@@ -76,7 +84,8 @@ export class TwilioIncomingCallHandler extends FunctionHandler<any, any> {
     const messageService = new MessagesDataService(tools);
     const processMessageService = new ProcessMessageService(cursorService, connectionDataService, blockService, tools, ivrActiveChannel, processMediaService);
 
-    const bot = new BotEnginePlay(processMessageService, cursorService, messageService,processMediaService, ivrActiveChannel, tools);
+
+    // const bot = new BotEnginePlay(processMessageService, cursorService, messageService,processMediaService, ivrActiveChannel, tools);
     
     const story = await storyService.getStory(communicationChannel.defaultStory);
 
@@ -85,13 +94,18 @@ export class TwilioIncomingCallHandler extends FunctionHandler<any, any> {
       phoneNumber: sanitizedResponse.endUserNumber,
     }
     let block: IVRStoryBlock;
+    let ivrMessageParser: IParseInMessage;
 
     if(!dtmfDigits)
     {
       block = await blockService.getFirstBlock(communicationChannel.orgId, story.id) as IVRStoryBlock;
-  
+      ivrMessageParser = new IvrMessageParser().resolve(MessageTypes.TEXT);
+      if (!ivrMessageParser) return { status: 500, message: `Incoming message format unknown: ${block.message}` } as RestResult;
+
       sanitizedResponse.message.text = block.message;
       sanitizedResponse.payload = block;
+      sanitizedResponse.type = ivrMessageParser;
+      
   
     }
     else 
@@ -99,20 +113,30 @@ export class TwilioIncomingCallHandler extends FunctionHandler<any, any> {
       const cursor = await cursorService.getLatestCursor(ivrEndUser.id, communicationChannel.orgId) as Cursor;
       // const blockMessage = await bot.__getNextBlock(ivrEndUser, cursor);
       block = await blockService.getBlockById(cursor.position.blockId, communicationChannel.orgId, cursor.position.storyId);
+      ivrMessageParser = new IvrMessageParser().resolve(MessageTypes.QUESTION);
+      if (!ivrMessageParser) return { status: 500, message: `Incoming message format unknown: ${block.message}` } as RestResult;
 
       sanitizedResponse.message.text = block.message;
       sanitizedResponse.payload = block;
+      sanitizedResponse.type = ivrMessageParser;
+      sanitizedResponse.digits = dtmfDigits;
+
 
     }
-    const result = await engine.run(sanitizedResponse.message, ivrEndUser);
+    const message = ivrMessageParser.parse(sanitizedResponse);
+
+
+    console.log("The parsed message is", JSON.stringify(message));
+    const result = await engine.run(message, ivrEndUser);
     // const result = await engine.run({"type": sanitizedResponse.type}, ivrEndUser);
   
-    console.log("$$$$$$$$$$$$$$$$$$$$$", result);
+    // console.log("===================>: ", result.data.toString());
 
-    return result.data && result.data?.success ?  result.data.toString() : this.systemErrorTwiml();
+    // return (result.data && result.data?.success) ?  result.data.toString() : this.systemErrorTwiml();
+    return result.data ?  result.data.toString() : this.systemErrorTwiml() ;
   }
   private systemErrorTwiml()
   {
-    return new twiml.VoiceResponse().say("Leaving Goomza, 420 Error");
+    return new twiml.VoiceResponse().say("Leaving Goomza, 420 Error").toString();
   }
 }
